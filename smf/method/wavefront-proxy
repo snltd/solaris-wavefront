@@ -1,0 +1,51 @@
+#!/bin/ksh
+
+# Start and background the JVM, then for as long as that process is
+# alive, try to make an HTTP connection to a port we know the
+# application opens. Once that is done, the service is assumed to be
+# safely up. If it doesn't happen after 20 seconds we assume it's
+# never going to, and exit non-zero, killing the JVM, if it's still
+# here. If at any point in that loop the JVM goes away, we also
+# assume failure and abort.  Solaris contracts handle the killing of
+# the JVM when the service is disabled, so we only need a start
+# method.
+
+PATH=/bin
+
+java \
+    -Xmx1024m \
+    -Xms1024m \
+    -XX:+AggressiveHeap \
+    -jar /opt/wavefront/lib/wavefront-push-agent.jar \
+    -f /config/wavefront/wavefront.conf \
+    --buffer /var/wavefront/buffer/buffer \
+    >>/var/log/wavefront/wavefront-proxy.log 2>&1 \
+  &
+
+PID=$!
+checks=20
+print -u2 "Process launched as ${PID}. Waiting for connection."
+
+while (( checks > 0 ))
+do
+  sleep 1
+
+  if ! ps -p $PID >/dev/null 2>&1
+  then
+    print -u2 "FAILED: process is dead "
+    exit 1
+  fi
+
+  if curl -s localhost:3878
+  then
+    print -u2 " OK"
+    exit 0
+  fi
+
+  print -n .
+  (( checks = checks - 1 ))
+done
+
+ps -p $PID >/dev/null 2>&1 && kill $PID || kill -9 $PID
+print -u2 " FAILED. Cannot access port 3878"
+exit 1

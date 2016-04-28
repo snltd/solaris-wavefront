@@ -1,0 +1,24 @@
+<?xml version='1.0'?>
+<!DOCTYPE service_bundle SYSTEM '/usr/share/lib/xml/dtd/service_bundle.dtd.1'>
+<service_bundle type='manifest' name='export'>
+  <service name='wavefront/proxy' type='service' version='0'>
+    <create_default_instance enabled='true'/>
+    <dependency name='multi_user_dependency' grouping='require_all' restart_on='none' type='service'>
+      <service_fmri value='svc:/milestone/multi-user'/>
+    </dependency>
+    <method_context>
+      <method_credential group='daemon' user='wavefront'/>
+    </method_context>
+    <exec_method name='start' type='method' exec='/usr/local/lib/svc/method/wavefront-proxy' timeout_seconds='0'/>
+    <exec_method name='stop' type='method' exec=':kill' timeout_seconds='60'/>
+    <exec_method name='refresh' type='method' exec=':true' timeout_seconds='60'/>
+    <template>
+      <common_name>
+        <loctext xml:lang='C'>Wavefront proxy service</loctext>
+      </common_name>
+      <description>
+        <loctext xml:lang='C'>Forward metrics to a Wavefront cluster</loctext>
+      </description>
+    </template>
+  </service>
+</service_bundle>
