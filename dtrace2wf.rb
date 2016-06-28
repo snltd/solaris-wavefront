@@ -1,8 +1,47 @@
 #!/usr/bin/env ruby
 
+#=======================================================================
+#
+# dtrace2wf.rb
+# ------------
+#
+# Pull DTrace aggragated data out of a FIFO and turn it into basic
+# Wavefront metrics. I chose to use a FIFO rather than STDIN as it
+# gives a nice separation between privileged collector and
+# unpriviliged aggretator/forwarder. The coupling can even be
+# across zones with a correctly shared filesystems for the named
+# pipe.
+#
+# As it stands, this script only understands simple two-column
+# DTrace output, where the left column is an aggregation bucket
+# whose name will become the final segment of the metric path, and
+# the right column is the value which will be sent.
+#
+# Requires a readable FIFO. Create a fifo whose name is the first
+# part of the metric path you desire, and direct your D script's
+# output to it. For example:
+#
+#   $ mkfifo -m 666 /tmp/interrupts.cpu
+#   $ ./cpu_latency.d >/tmp/interrupts.cpu
+#
+# then run this script with the path to the FIFO as the only
+# argument.
+#
+# CAVEATS
+# This is only really a proof-of-concept, illustrative program.  If
+# this script dies, DTrace will exit. If this matters (!), put both
+# under SMF control, with this service dependent on the D script.
+#
+# R Fisher 06/2016
+#
+#=======================================================================
+
 require 'pathname'
 require 'socket'
 
+# If you want, you can bundle up metrics before sending them. This
+# lets you do intervals which DTrace's tick() doesn't support.
+#
 CHUNKS_PER_SEND  = 1
 POLL_INTERVAL    = 0.1
 HOSTNAME         = Socket.gethostname
@@ -14,23 +53,26 @@ LINE_FORMAT      = %r{^(\d+)\s+(\d+)$}
 # METHODS
 
 def flush_metrics(data, prefix)
+  #
+  # Send data in Wavefront format over a socket.
+  #
   timestamp = Time.now.to_i
 
   begin
-    sock = TCPSocket.open(METRICS_ENDPOINT, METRICS_PORT)
+    s = TCPSocket.open(METRICS_ENDPOINT, METRICS_PORT)
   rescue
     abort "ERROR: cannot open socket to #{METRICS_ENDPOINT}."
   end
 
   begin
     data.each do |bucket, value|
-      sock.puts "#{prefix}.#{bucket} #{value} #{timestamp} source=#{HOSTNAME}"
+      s.puts "#{prefix}.#{bucket} #{value} #{timestamp} source=#{HOSTNAME}"
     end
   rescue
     puts 'WARNING: could not sent metrics.'
   end
 
-  sock.close
+  s.close
 end
 
 def process_buffer(buffer)
@@ -70,8 +112,7 @@ abort 'Please supply a path to a FIFO' unless ARGV.size == 1
 
 # The name of the fifo is the first part of the metric path
 #
-prefix = ARGV.first
-FIFO = Pathname.new('/tmp') + prefix
+FIFO = Pathname.new(ARGV.first)
 
 unless FIFO.exist? && FIFO.readable? && FIFO.pipe?
   abort "ERROR: can't read FIFO '#{FIFO}'."
@@ -97,7 +138,7 @@ loop do
         raw_buf = []
 
         if buffer.length == CHUNKS_PER_SEND
-          flush_metrics(process_buffer(buffer), prefix)
+          flush_metrics(process_buffer(buffer), FIFO.basename)
           buffer = []
         end
 
