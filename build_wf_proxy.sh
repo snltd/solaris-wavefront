@@ -32,6 +32,9 @@ then
 fi
 
 grep -s Solaris /etc/release && IS_SOLARIS=true
+
+[[ -n $IS_SOLARIS ]] || PATH=/opt/local/bin:/bin
+
 print -n "Prerequisites\n  checking for git: "
 
 if which git >/dev/null 2>&1
