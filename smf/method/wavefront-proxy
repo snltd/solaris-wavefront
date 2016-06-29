@@ -16,8 +16,8 @@ java \
     -Xmx1024m \
     -Xms1024m \
     -XX:+AggressiveHeap \
-    -jar /opt/wavefront/lib/wavefront-push-agent.jar \
-    -f /config/wavefront/wavefront.conf \
+    -jar __PREFIX__/wavefront/lib/wavefront-push-agent.jar \
+    -f __PREFIX__/etc/wavefront.conf \
     --buffer /var/wavefront/buffer/buffer \
     >>/var/log/wavefront/wavefront-proxy.log 2>&1 \
   &
