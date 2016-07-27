@@ -8,9 +8,11 @@
 # Build a Wavefront proxy JAR on Solaris 11. Will eventually work
 # for SmartOS but I don't have a box right now. Coming soon.
 #
-# The script outputs a single file, 'wavefront-push-agent.jar', in
-# the user's HOME directory. I don't see much point packaging a
-# single file. If you wish to do the work, send me a PR.
+# The script expects a single argument, which is the version of the
+# proxy to build. Outputs a single file,
+# 'wavefront-push-agent-<version>.jar', in the user's HOME directory. I
+# don't see much point packaging a single file. If you wish to do the
+# work, send me a PR.
 #
 # SMF manifests can be found at
 #
@@ -31,16 +33,15 @@ then
 	exit 1
 fi
 
-grep -s Solaris /etc/release && IS_SOLARIS=true
-print -n "Prerequisites\n  checking for git: "
-
-if which git >/dev/null 2>&1
+if [[ $# == 1 ]]
 then
-	print OK
+    VER=$1
 else
-	print -n "installing: "
-	$IS_SOLARIS && pkg install git
+    print "usage: ${0##*/} <version>"
+    exit 1
 fi
+
+grep -q Solaris /etc/release && IS_SOLARIS=true
 
 print -n "  checking for JDK: "
 
@@ -71,8 +72,20 @@ else
 fi
 
 print "Getting proxy source: "
-git clone https://github.com/wavefrontHQ/java.git ${WORK_DIR}/wf
-$MVN -am package --projects proxy -f ${WORK_DIR}/wf/pom.xml
-mv ${WORK_DIR}/wf/proxy/target/wavefront-push-agent.jar ${HOME}
-rm -fr ${WORK_DIR}
-print "file at ${HOME}/wavefront-push-agent.jar"
+
+curl -Lks https://github.com/wavefrontHQ/java/archive/${VER}.tar.gz \
+    | gtar -C $WORK_DIR -zxf -
+SRC_DIR=${WORK_DIR}/java-${VER}
+ARTEFACT=${HOME}/wavefront-push-agent-${VER}.jar
+
+if [[ ! -d $SRC_DIR ]]
+then
+    print -u2 "no source at ${SRC_DIR}."
+    rm -fr $WORK_DIR
+    exit 1
+fi
+
+$MVN -am package --projects proxy -f ${SRC_DIR}/pom.xml
+mv ${SRC_DIR}/proxy/target/wavefront-push-agent.jar ${ARTEFACT}
+#rm -fr $WORK_DIR
+print "file at $ARTEFACT"
