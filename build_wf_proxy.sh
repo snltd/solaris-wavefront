@@ -43,7 +43,9 @@ fi
 
 grep -q Solaris /etc/release && IS_SOLARIS=true
 
-print -n "  checking for JDK: "
+[[ -n $IS_SOLARIS ]] || PATH=/opt/local/bin:/bin
+
+print -n "Prerequisites\n  checking for JDK: "
 
 if which java >/dev/null 2>&1
 then
@@ -61,17 +63,17 @@ then
 	print OK
 else
 	print -n "downloading: "
-	wget -q -P ${WORK_DIR} \
-		"http://mirror.ox.ac.uk/sites/rsync.apache.org/maven/maven-3/${MVN_VER}/binaries/${MVN_SRC}"
-	print -n "installing: "
-	gtar zxf ${WORK_DIR}/${MVN_SRC} -C ${WORK_DIR}
+	curl -Ls \
+        "http://mirror.ox.ac.uk/sites/rsync.apache.org/maven/maven-3/${MVN_VER}/binaries/${MVN_SRC}" \
+        | gtar -C $WORK_DIR -zxf -
+
 	MVN=${WORK_DIR}/apache-maven-${MVN_VER}/bin/mvn
 	print -n "doctoring: "
 	gsed -i 's|#!/bin/sh|#!/bin/bash|' $MVN
 	print OK
 fi
 
-print "Getting proxy source: "
+print "Getting proxy source from tag ${VER}"
 
 curl -Lks https://github.com/wavefrontHQ/java/archive/${VER}.tar.gz \
     | gtar -C $WORK_DIR -zxf -
@@ -87,5 +89,5 @@ fi
 
 $MVN -am package --projects proxy -f ${SRC_DIR}/pom.xml
 mv ${SRC_DIR}/proxy/target/wavefront-push-agent.jar ${ARTEFACT}
-#rm -fr $WORK_DIR
+rm -fr $WORK_DIR
 print "file at $ARTEFACT"

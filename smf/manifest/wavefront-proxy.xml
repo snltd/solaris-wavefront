@@ -9,7 +9,7 @@
     <method_context>
       <method_credential group='daemon' user='wavefront'/>
     </method_context>
-    <exec_method name='start' type='method' exec='/usr/local/lib/svc/method/wavefront-proxy' timeout_seconds='0'/>
+    <exec_method name='start' type='method' exec='__PREFIX__/lib/svc/method/wavefront-proxy' timeout_seconds='0'/>
     <exec_method name='stop' type='method' exec=':kill' timeout_seconds='60'/>
     <exec_method name='refresh' type='method' exec=':true' timeout_seconds='60'/>
     <template>
