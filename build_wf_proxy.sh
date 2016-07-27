@@ -1,5 +1,3 @@
-#!/bin/ksh -e
-
 #===========================================================================
 #
 # build_wf_proxy.sh
@@ -43,7 +41,7 @@ fi
 
 grep -q Solaris /etc/release && IS_SOLARIS=true
 
-[[ -n $IS_SOLARIS ]] || PATH=/opt/local/bin:/bin
+[[ -z $IS_SOLARIS ]] && PATH=/opt/local/bin:/bin
 
 print -n "Prerequisites\n  checking for JDK: "
 
@@ -52,26 +50,39 @@ then
 	print OK
 else
 	print -n "installing: "
-	$IS_SOLARIS && pkg install --accept jdk-7
+
+	if [[ -n $IS_SOLARIS ]]
+	then
+ 		pkg install --accept jdk-7
+	else
+		pkgin -y in openjdk7
+	fi
 fi
 
 print -n "  checking for Maven: "
 
 if which mvn >/dev/null 2>&1
 then
-	MVN=$(which mvn)
 	print OK
 else
-	print -n "downloading: "
-	curl -Ls \
-        "http://mirror.ox.ac.uk/sites/rsync.apache.org/maven/maven-3/${MVN_VER}/binaries/${MVN_SRC}" \
-        | gtar -C $WORK_DIR -zxf -
-
-	MVN=${WORK_DIR}/apache-maven-${MVN_VER}/bin/mvn
-	print -n "doctoring: "
-	gsed -i 's|#!/bin/sh|#!/bin/bash|' $MVN
-	print OK
+	if [[ -n $IS_SOLARIS ]]
+	then
+		print -n "downloading: "
+		curl -Ls \
+        	"http://mirror.ox.ac.uk/sites/rsync.apache.org/maven/maven-3/${MVN_VER}/binaries/${MVN_SRC}" \
+        	| gtar -C $WORK_DIR -zxf -
+	
+		MVN=${WORK_DIR}/apache-maven-${MVN_VER}/bin/mvn
+		print -n "doctoring: "
+		gsed -i 's|#!/bin/sh|#!/bin/bash|' $MVN
+		print OK
+	else
+		print "installing"
+		pkgin -y in apache-maven
+	fi
 fi
+
+MVN=$(which mvn)
 
 print "Getting proxy source from tag ${VER}"
 
