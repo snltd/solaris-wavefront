@@ -3,20 +3,21 @@
 # build_wf_proxy.sh
 # -----------------
 #
-# Build a Wavefront proxy JAR on Solaris 11. Will eventually work
-# for SmartOS but I don't have a box right now. Coming soon.
+# Build a Wavefront proxy JAR on Solaris 11 or SmartOS. If you are doing
+# the latter, it's easiest to spin up a 'java' image in the JPC and use
+# that.
 #
 # The script expects a single argument, which is the version of the
-# proxy to build. Outputs a single file,
-# 'wavefront-push-agent-<version>.jar', in the user's HOME directory. I
-# don't see much point packaging a single file. If you wish to do the
-# work, send me a PR.
+# proxy to build. This should be a release tag, listed at
+# https://github.com/wavefrontHQ/java/releases.
 #
-# SMF manifests can be found at
+# Output is a single file, 'wavefront-push-agent-<version>.jar', in the
+# user's HOME directory. I don't see much point packaging a single file.
+# If you wish to do the work, send me a PR.
 #
-# Works at the time of writing, but there's no guarantee Wavefront
-# won't change their build process and break it.
-#
+# Works for Solaris 11 and SmartOS 16.2 at the time of writing, but
+# there's no guarantee Wavefront won't change their build process and
+# break it.
 #
 #===========================================================================
 
@@ -71,7 +72,7 @@ else
 		curl -Ls \
         	"http://mirror.ox.ac.uk/sites/rsync.apache.org/maven/maven-3/${MVN_VER}/binaries/${MVN_SRC}" \
         	| gtar -C $WORK_DIR -zxf -
-	
+
 		MVN=${WORK_DIR}/apache-maven-${MVN_VER}/bin/mvn
 		print -n "doctoring: "
 		gsed -i 's|#!/bin/sh|#!/bin/bash|' $MVN
