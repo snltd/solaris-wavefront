@@ -11,9 +11,10 @@
 # proxy to build. This should be a release tag, listed at
 # https://github.com/wavefrontHQ/java/releases.
 #
-# Output is a single file, 'wavefront-push-agent-<version>.jar', in the
-# user's HOME directory. I don't see much point packaging a single file.
-# If you wish to do the work, send me a PR.
+# Output is a single file, a tarball named
+# 'proxy-<version>-bin.tar.gz', in the user's HOME directory. This
+# is the artefact produced by the Wavefront build process, which
+# this script does not manipulate.
 #
 # Works for Solaris 11 and SmartOS 16.2 at the time of writing, but
 # there's no guarantee Wavefront won't change their build process and
@@ -42,7 +43,15 @@ fi
 
 grep -q Solaris /etc/release && IS_SOLARIS=true
 
-[[ -z $IS_SOLARIS ]] && PATH=/opt/local/bin:/bin
+if [[ -n $IS_SOLARIS ]]
+then
+    # tar now needs to be gtar
+    #mkdir ${WORK_DIR}/bin
+    #ln -s $(which gtar) ${WORK_DIR}/bin/tar
+    export PATH=${WORK_DIR}/bin:${PATH}:/usr/local/apache-maven/bin
+else
+    PATH=/opt/local/bin:/bin
+fi
 
 print -n "Prerequisites\n  checking for JDK: "
 
@@ -90,7 +99,7 @@ print "Getting proxy source from tag ${VER}"
 curl -Lks https://github.com/wavefrontHQ/java/archive/${VER}.tar.gz \
     | gtar -C $WORK_DIR -zxf -
 SRC_DIR=${WORK_DIR}/java-${VER}
-ARTEFACT=${HOME}/wavefront-push-agent-${VER}.jar
+ARTEFACT=${SRC_DIR}/proxy/target/proxy-${VER##*-}-bin.tar.gz
 
 if [[ ! -d $SRC_DIR ]]
 then
@@ -99,7 +108,23 @@ then
     exit 1
 fi
 
-$MVN -am package --projects proxy -f ${SRC_DIR}/pom.xml
-mv ${SRC_DIR}/proxy/target/wavefront-push-agent.jar ${ARTEFACT}
-rm -fr $WORK_DIR
-print "file at $ARTEFACT"
+print "Building proxy"
+
+if $MVN -am package --projects proxy -f ${SRC_DIR}/pom.xml
+then
+    print "Artefact successfully built."
+else
+    print "Artefact did not build. Leaving ${SRC_DIR} intact."
+    exit 1
+fi
+
+if [[ -s $ARTEFACT ]]
+then
+    mv $ARTEFACT $HOME
+    print "file at ${HOME}/${ARTEFACT##*/}"
+    rm -fr $WORK_DIR
+    exit 0
+else
+    print "No artefact at ${ARTEFACT}. Leaving ${SRC_DIR} intact."
+    exit 2
+fi
