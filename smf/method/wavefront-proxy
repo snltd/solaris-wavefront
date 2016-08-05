@@ -1,49 +1,57 @@
-#!/bin/ksh
+#!/usr/bin/ksh
 
-# Start and background the JVM, then for as long as that process is
-# alive, try to make an HTTP connection to a port we know the
-# application opens. Once that is done, the service is assumed to be
-# safely up. If it doesn't happen after 20 seconds we assume it's
-# never going to, and exit non-zero, killing the JVM, if it's still
-# here. If at any point in that loop the JVM goes away, we also
-# assume failure and abort.  Solaris contracts handle the killing of
-# the JVM when the service is disabled, so we only need a start
-# method.
+#===========================================================================
+#
+# wavefront SMF method
+# --------------------
+#
+# A simple script to start the Wavefront proxy on a SunOS system.
+#
+# This is tested with Wavefront proxy v3.23.
+#
+#===========================================================================
 
 PATH=/bin
 
-java \
-    -Xmx1024m \
-    -Xms1024m \
-    -XX:+AggressiveHeap \
-    -jar __PREFIX__/wavefront/lib/wavefront-push-agent.jar \
-    -f __PREFIX__/etc/wavefront.conf \
-    --buffer /var/wavefront/buffer/buffer \
-    >>/var/log/wavefront/wavefront-proxy.log 2>&1 \
-  &
+WF_BASEDIR=/opt/wavefront/$(ls /opt/wavefront | grep proxy | tail -1)
+WF_REPO=${WF_BASEDIR}/repo
+WF_CONFIG_FILE=/config/wavefront/wavefront.conf
+
+java -Xmx1G -Xms1G -server -verbosegc \
+    -XX:-UseParallelOldGC -XX:OnOutOfMemoryError="kill -9 %p" \
+    -Djava.util.logging.SimpleFormatter.format="%1$tY-%1$tm-%1$td%1$tH:%1$tM:%1$tS %4$-6s %2$s %5$s%6$s%n" \
+    -classpath "$(find $WF_REPO -name \*jar | tr \\n :)" \
+    -Dapp.name="agent" \
+    -Dapp.pid="$$" \
+    -Dapp.repo="$WF_REPO" \
+    -Dapp.home="$WF_BASEDIR" \
+    -Dbasedir="$WF_BASEDIR" \
+    com.wavefront.agent.PushAgent \
+    -f $WF_CONFIG_FILE \
+>>/var/log/wavefront/wavefront-proxy.log 2>&1 &
 
 PID=$!
 checks=20
-print -u2 "Process launched as ${PID}. Waiting for connection."
+print "Process launched as ${PID}. Waiting for connection."
 
 while (( checks > 0 ))
 do
-  sleep 1
+    sleep 1
 
-  if ! ps -p $PID >/dev/null 2>&1
-  then
-    print -u2 "FAILED: process is dead "
-    exit 1
-  fi
+    if ! ps -p $PID >/dev/null 2>&1
+    then
+        print -u2 "FAILED: process is dead "
+        exit 1
+    fi
 
-  if curl -s localhost:3878
-  then
-    print -u2 " OK"
-    exit 0
-  fi
+    if print < /dev/tcp/localhost/2878 >/dev/null 2>&1
+    then
+        print " OK"
+        exit 0
+    fi
 
-  print -n .
-  (( checks = checks - 1 ))
+    print -n .
+	(( checks = checks - 1 ))
 done
 
 ps -p $PID >/dev/null 2>&1 && kill $PID || kill -9 $PID
