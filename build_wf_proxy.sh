@@ -55,7 +55,7 @@ fi
 
 print -n "Prerequisites\n  checking for JDK: "
 
-if which java >/dev/null 2>&1
+if which java >/dev/null 2>&1 && java -version 2>&1 | grep 'version "1.8'
 then
 	print OK
 else
@@ -63,9 +63,9 @@ else
 
 	if [[ -n $IS_SOLARIS ]]
 	then
- 		pkg install --accept jdk-7
+ 		pkg install --accept jdk-8
 	else
-		pkgin -y in openjdk7
+		pkgin -y in openjdk8
 	fi
 fi
 
@@ -96,8 +96,13 @@ MVN=$(which mvn)
 
 print "Getting proxy source from tag ${VER}"
 
-curl -Lks https://github.com/wavefrontHQ/java/archive/${VER}.tar.gz \
-    | gtar -C $WORK_DIR -zxf -
+if ! curl -Lks https://github.com/wavefrontHQ/java/archive/${VER}.tar.gz \
+    | gtar -C $WORK_DIR -zxf >/dev/null 2>&1 -
+then
+    print -u2 "Couldn't get archive fron Github. Check your tag is valid."
+    exit 2
+fi
+
 SRC_DIR=${WORK_DIR}/java-${VER}
 ARTEFACT=${SRC_DIR}/proxy/target/proxy-${VER##*-}-bin.tar.gz
 
