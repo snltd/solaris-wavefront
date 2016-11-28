@@ -1,4 +1,4 @@
-#!/usr/bin/ksh
+#!/usr/bin/ksh -x
 
 #===========================================================================
 #
@@ -6,21 +6,21 @@
 # --------------------
 #
 # A simple script to start the Wavefront proxy on a SunOS system.
-#
-# This is tested with Wavefront proxy v3.23.
+# SMF can stop it without assistance. You might need to change the
+# heap size
 #
 #===========================================================================
 
-PATH=/bin
+PATH=/bin:/opt/local/bin
 
-WF_BASEDIR=/opt/wavefront/$(ls /opt/wavefront | grep proxy | tail -1)
+WF_BASEDIR=__PREFIX__/$(ls __PREFIX__ | grep proxy | tail -1)
 WF_REPO=${WF_BASEDIR}/repo
 WF_CONFIG_FILE=/config/wavefront/wavefront.conf
 
-java -Xmx1G -Xms1G -server -verbosegc \
+java -Xmx500m -Xms200m -server -verbosegc \
     -XX:-UseParallelOldGC -XX:OnOutOfMemoryError="kill -9 %p" \
     -Djava.util.logging.SimpleFormatter.format="%1$tY-%1$tm-%1$td%1$tH:%1$tM:%1$tS %4$-6s %2$s %5$s%6$s%n" \
-    -classpath "$(find $WF_REPO -name \*jar | tr \\n :)" \
+    -classpath "$(find $WF_REPO -name \*jar | sort -r | tr \\n :)" \
     -Dapp.name="agent" \
     -Dapp.pid="$$" \
     -Dapp.repo="$WF_REPO" \
