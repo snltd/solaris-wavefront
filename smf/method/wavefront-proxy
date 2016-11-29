@@ -1,4 +1,4 @@
-#!/usr/bin/ksh -x
+#!/usr/bin/ksh
 
 #===========================================================================
 #
@@ -18,7 +18,7 @@ propval() {
 WF_BASEDIR=__PREFIX__/$(ls __PREFIX__ | grep proxy | tail -1)
 WF_REPO=${WF_BASEDIR}/repo
 
-java -Xmx500m -Xms200m -server -verbosegc \
+java -Xmx$(propval heap_max) -Xms$(propval heap_min) -server -verbosegc \
     -XX:-UseParallelOldGC -XX:OnOutOfMemoryError="kill -9 %p" \
     -Djava.util.logging.SimpleFormatter.format="%1$tY-%1$tm-%1$td%1$tH:%1$tM:%1$tS %4$-6s %2$s %5$s%6$s%n" \
     -classpath "$(find $WF_REPO -name \*jar | sort -r | tr \\n :)" \
