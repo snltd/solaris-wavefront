@@ -12,6 +12,13 @@
     <exec_method name='start' type='method' exec='__PREFIX__/lib/svc/method/wavefront-proxy' timeout_seconds='0'/>
     <exec_method name='stop' type='method' exec=':kill' timeout_seconds='60'/>
     <exec_method name='refresh' type='method' exec=':true' timeout_seconds='60'/>
+    <property_group name='options' type='application'>
+      <propval name='heap_max' type='astring' value='500M'/>
+      <propval name='heap_min' type='astring' value='300M'/>
+      <propval name='config_file' type='astring'
+               value='/config/wavefront/wavefront.conf'/>
+    </property_group>
+
     <template>
       <common_name>
         <loctext xml:lang='C'>Wavefront proxy service</loctext>

@@ -11,11 +11,12 @@
 #
 #===========================================================================
 
-PATH=/bin:/opt/local/bin
+propval() {
+	svcprop -p options/$1 wavefront/proxy
+}
 
 WF_BASEDIR=__PREFIX__/$(ls __PREFIX__ | grep proxy | tail -1)
 WF_REPO=${WF_BASEDIR}/repo
-WF_CONFIG_FILE=/config/wavefront/wavefront.conf
 
 java -Xmx500m -Xms200m -server -verbosegc \
     -XX:-UseParallelOldGC -XX:OnOutOfMemoryError="kill -9 %p" \
@@ -27,7 +28,7 @@ java -Xmx500m -Xms200m -server -verbosegc \
     -Dapp.home="$WF_BASEDIR" \
     -Dbasedir="$WF_BASEDIR" \
     com.wavefront.agent.PushAgent \
-    -f $WF_CONFIG_FILE \
+	-f $(propval config_file) \
 >>/var/log/wavefront/wavefront-proxy.log 2>&1 &
 
 PID=$!
