@@ -15,21 +15,18 @@ propval() {
 	svcprop -p options/$1 wavefront/proxy
 }
 
-WF_BASEDIR=__PREFIX__/$(ls __PREFIX__ | grep proxy | tail -1)
+WF_BASEDIR=__PREFIX__/$(ls __PREFIX__| grep proxy | tail -1)
 WF_REPO=${WF_BASEDIR}/repo
+PATH=/bin:/opt/local/java/bin
 
 java -Xmx$(propval heap_max) -Xms$(propval heap_min) -server -verbosegc \
-    -XX:-UseParallelOldGC -XX:OnOutOfMemoryError="kill -9 %p" \
-    -Djava.util.logging.SimpleFormatter.format="%1$tY-%1$tm-%1$td%1$tH:%1$tM:%1$tS %4$-6s %2$s %5$s%6$s%n" \
-    -classpath "$(find $WF_REPO -name \*jar | sort -r | tr \\n :)" \
-    -Dapp.name="agent" \
-    -Dapp.pid="$$" \
-    -Dapp.repo="$WF_REPO" \
-    -Dapp.home="$WF_BASEDIR" \
-    -Dbasedir="$WF_BASEDIR" \
-    com.wavefront.agent.PushAgent \
-	-f $(propval config_file) \
->>/var/log/wavefront/wavefront-proxy.log 2>&1 &
+     -classpath "$(find $WF_REPO -name \*jar | sort -r | tr \\n :)" \
+	 -Dlog4j.configurationFile=/config/wavefront/log4j2.xml \
+     -Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager \
+     -Dapp.home="$WF_BASEDIR" \
+     -Dbasedir="$WF_BASEDIR" \
+     com.wavefront.agent.PushAgent \
+	 -f $(propval config_file) &
 
 PID=$!
 checks=20
@@ -52,7 +49,7 @@ do
     fi
 
     print -n .
-	(( checks = checks - 1 ))
+        (( checks = checks - 1 ))
 done
 
 ps -p $PID >/dev/null 2>&1 && kill $PID || kill -9 $PID

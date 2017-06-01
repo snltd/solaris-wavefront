@@ -35,7 +35,7 @@
 #--------------------------------------------------------------------------
 # VARIABLES
 
-PATH=/bin:/opt/puppet/bin
+PATH=/bin:/opt/local/ruby/bin
 ROOT=${0%/*}
 WORK_DIR=$(mktemp -d)
 MVN_MIRROR="http://mirror.ox.ac.uk/sites/rsync.apache.org"
@@ -58,15 +58,16 @@ setup_env() {
         PATH=${PATH}:${WORK_DIR}/bin:${PATH}:/usr/local/apache-maven/bin
         PKG_TYPE=solaris
         PKG_PREFIX=/opt/wavefront
+		INST_PREFIX=/opt/wavefront
         PKG_NAME="SDEFwfproxy"
         PKG_ARTEFACT="${SOLARIS_PKG_DIR}/${PKG_NAME}.pkg"
     else
         PATH=${PATH}:/opt/local/bin:/opt/local/git/bin:/opt/local/sbin
         JAVA_HOME=/opt/local
+		INST_PREFIX=/opt/local/wavefront
         PKG_TYPE=pkgin
-        PKG_PREFIX=/opt/local/wavefront
+        PKG_PREFIX=wavefront
         PKG_NAME="wavefront-proxy"
-        PKG_ARTEFACT="${HOME}/${PKG_NAME}.pkgin"
     fi
 }
 
@@ -141,18 +142,18 @@ build_package() {
     PKG_DIR=${WORK_DIR}/pkg
     PKG_VER=${ARTEFACT##*proxy-}
     PKG_VER=${PKG_VER%%-*}
+	[[ -z $PKG_ARTEFACT ]] && PKG_ARTEFACT="${HOME}/${PKG_NAME}-${PKG_VER}.tgz"
     mkdir -p $PKG_DIR
     gtar -xf $ARTEFACT -C $PKG_DIR
     mkdir -p ${PKG_DIR}/lib/svc/method ${PKG_DIR}/lib/svc/manifest
 
-    sed "s|__PREFIX__|$PKG_PREFIX|g" \
+    sed "s|__PREFIX__|$INST_PREFIX|g" \
         ${ROOT}/smf/manifest/wavefront-proxy.xml \
         >${PKG_DIR}/lib/svc/manifest/wavefront-proxy.xml
 
-    sed "s|__PREFIX__|$PKG_PREFIX|g" ${ROOT}/smf/method/wavefront-proxy \
+    sed "s|__PREFIX__|$INST_PREFIX|g" ${ROOT}/smf/method/wavefront-proxy \
         >${PKG_DIR}/lib/svc/method/wavefront-proxy
     chmod 755 ${PKG_DIR}/lib/svc/method/wavefront-proxy
-
 
     fpm --verbose -v $PKG_VER -n $PKG_NAME -s dir -t $PKG_TYPE \
         --description="Wavefront proxy server" --vendor=Wavefront \

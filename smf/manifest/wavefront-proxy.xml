@@ -13,8 +13,8 @@
     <exec_method name='stop' type='method' exec=':kill' timeout_seconds='60'/>
     <exec_method name='refresh' type='method' exec=':true' timeout_seconds='60'/>
     <property_group name='options' type='application'>
-      <propval name='heap_max' type='astring' value='500m'/>
-      <propval name='heap_min' type='astring' value='300m'/>
+      <propval name='heap_max' type='astring' value='256m'/>
+      <propval name='heap_min' type='astring' value='128m'/>
       <propval name='config_file' type='astring'
                value='/config/wavefront/wavefront.conf'/>
     </property_group>
